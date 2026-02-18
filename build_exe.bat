@@ -21,8 +21,8 @@ pyinstaller ^
   --onefile ^
   --name ValidadorXML ^
   --collect-all streamlit ^
-  --add-data "app_chatgpt.py;." ^
-  --add-data "backend_chatgpt.py;." ^
+  --add-data "app.py;." ^
+  --add-data "backend.py;." ^
   --add-data "data;data" ^
   launcher_streamlit.py
 

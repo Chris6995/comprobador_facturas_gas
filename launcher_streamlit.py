@@ -11,7 +11,7 @@ from streamlit.web import cli as stcli
 
 def _app_path() -> Path:
     base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return base_dir / "app_chatgpt.py"
+    return base_dir / "app.py"
 
 
 def main() -> int:
