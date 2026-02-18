@@ -3,7 +3,7 @@ import sys
 
 import streamlit as st
 
-from backend_chatgpt import validate_from_streamlit_upload
+from backend import validate_from_streamlit_upload
 
 
 def _resource_path(relative_path: str) -> str:
