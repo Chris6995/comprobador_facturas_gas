@@ -19,6 +19,7 @@ Se ha migrado la aplicación de usar archivos Excel como referencia a usar una b
 2. Ve a "SQL Editor"
 3. Crea una nueva query y copia el contenido de `sql/database_schema.sql`
 4. Ejecuta el script
+5. Si tienes RLS activado, ejecuta tambien `sql/rls_policies.sql`
 
 **Las siguientes tablas se crearán:**
 
@@ -136,6 +137,11 @@ else:
 - Verifica URL y KEY en `.env`
 - Comprueba conectividad a internet
 - El sistema usará Excel como fallback automáticamente
+
+### "Conecta, pero todo sale SIN_REGLA"
+- Suele indicar tablas de referencia vacias por RLS sin politicas
+- Ejecuta `sql/rls_policies.sql` en Supabase SQL Editor
+- Verifica que existan filas en `peajes_local`, `peajes_regas`, `peajes_cargo`, `peajes_transporte`, `conceptos_rules`
 
 ### "Tabla no encontrada"
 - Verifica que hayas ejecutado el SQL de `sql/database_schema.sql`

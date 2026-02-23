@@ -13,10 +13,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("SUPABASE_URL y SUPABASE_KEY no están definidas en .env")
+    raise ValueError(
+        "SUPABASE_URL y una clave (SUPABASE_SERVICE_ROLE_KEY o SUPABASE_KEY) "
+        "no estan definidas en .env"
+    )
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -70,6 +73,14 @@ def _fetch_table_as_df(table_name: str) -> pd.DataFrame:
         return pd.DataFrame(data)
     except Exception as e:
         raise Exception(f"Error al obtener tabla {table_name}: {str(e)}")
+
+
+def _count_rows(table_name: str) -> int:
+    """
+    Devuelve el numero de filas de una tabla.
+    """
+    response = supabase.table(table_name).select("id", count="exact").limit(1).execute()
+    return int(response.count or 0)
 
 
 def get_concepto_rule(cod_concepto: str) -> Optional[Dict[str, Any]]:
@@ -168,8 +179,25 @@ def test_connection() -> bool:
     Prueba la conexión a Supabase
     """
     try:
-        # Intentar una consulta simple
-        response = supabase.table("peajes_local").select("*").limit(1).execute()
+        # Prueba de conectividad
+        supabase.table("peajes_local").select("id").limit(1).execute()
+
+        # Deteccion de RLS sin politicas o datos no cargados
+        required_tables = [
+            "peajes_local",
+            "peajes_regas",
+            "peajes_cargo",
+            "peajes_transporte",
+            "conceptos_rules",
+        ]
+        total_rows = sum(_count_rows(table) for table in required_tables)
+        if total_rows == 0:
+            print(
+                "Supabase responde pero no hay filas visibles en tablas de referencia. "
+                "Posible RLS sin politicas o datos no cargados."
+            )
+            return False
+
         return True
     except Exception as e:
         print(f"Error de conexión a Supabase: {str(e)}")

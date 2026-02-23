@@ -144,12 +144,16 @@ def expected_price_boe(
 
     # Local: TF/TV
     if codconcepto == "2002":  # término fijo local
+        if df_local.empty or "peaje" not in df_local.columns or "tf" not in df_local.columns:
+            return None
         fila = df_local[df_local["peaje"] == tipopeaje]
         if fila.empty:
             return None
         return float(fila["tf"].values[0])
 
     elif codconcepto == "2000":  # término variable local
+        if df_local.empty or "peaje" not in df_local.columns or "tv" not in df_local.columns:
+            return None
         fila = df_local[df_local["peaje"] == tipopeaje]
         if fila.empty:
             return None
@@ -157,6 +161,8 @@ def expected_price_boe(
 
     # Regasificación
     elif codconcepto == "2009":
+        if df_regas.empty or "peaje" not in df_regas.columns:
+            return None
         fila = df_regas[df_regas["peaje"] == tipopeaje]
         if fila.empty:
             return None
@@ -166,6 +172,8 @@ def expected_price_boe(
 
     # Cargo ministerio
     elif codconcepto == "2011":
+        if df_cargo.empty or "peaje" not in df_cargo.columns:
+            return None
         fila = df_cargo[df_cargo["peaje"] == tipopeaje]
         if fila.empty:
             return None
@@ -222,6 +230,14 @@ def validate_invoice(
         if not excel_path:
             excel_path = os.getenv("EXCEL_PATH")
         tables = load_reference_tables_from_excel(excel_path)
+
+    if use_database:
+        required = ["local", "regas", "cargo", "transporte", "rules"]
+        if all(tables.get(name, pd.DataFrame()).empty for name in required):
+            raise ValueError(
+                "Supabase devolvio todas las tablas de referencia vacias. "
+                "Revisa datos cargados, proyecto/URL y politicas RLS."
+            )
 
     tipopeaje = meta.get("tipopeaje")
     if not tipopeaje:
