@@ -2,12 +2,11 @@
 
 ## 📋 Descripción
 
-Se ha migrado la aplicación de usar archivos Excel como referencia a usar una base de datos Supabase. Esto permite:
+La aplicación usa Supabase como fuente única de datos de referencia. Esto permite:
 
 - ✅ Actualizar datos sin modificar archivos
 - ✅ Historial de validaciones
 - ✅ Mejor escalabilidad
-- ✅ Fallback automático a Excel si es necesario
 
 ---
 
@@ -36,9 +35,9 @@ Se ha migrado la aplicación de usar archivos Excel como referencia a usar una b
 
 ---
 
-### 2. Cargar datos desde Excel (opcional)
+### 2. Cargar datos de referencia
 
-Si quieres migrar los datos del Excel actual a la BD (trabajo manual):
+Carga tus datos de referencia en las tablas de Supabase (manual o scripts propios), por ejemplo:
 
 ```bash
 # En el editor SQL de Supabase, ejecuta:
@@ -67,7 +66,7 @@ La app verifica automáticamente la conexión al inicio. Si funciona:
 Si falla:
 
 ```
-⚠️ No se pudo conectar a Supabase. Usando fallback a Excel.
+❌ No se pudo conectar a Supabase.
 ```
 
 ---
@@ -95,34 +94,12 @@ SUPABASE_KEY=...
 ## 🔄 Cambios en el Backend
 
 ### `src/comprobador/core/validation.py`
-- `load_reference_tables()` ahora intenta Supabase primero, luego Excel como fallback
-- `validate_invoice()` tiene parámetro `use_database=True`
-- Compatible con versiones anteriores
+- `load_reference_tables()` lee desde Supabase
+- `validate_invoice()` valida contra tablas en BD
 
 ### `src/comprobador/ui/streamlit_app.py`
 - Verifica conexión a Supabase al iniciar
-- Usa BD automáticamente si está disponible
-
----
-
-## ⚙️ Configuración Avanzada
-
-### Usar Excel como fallback permanente
-
-Edita `app.py`:
-```python
-out = validate_from_streamlit_upload(xml_file, use_database=False)
-```
-
-### Usar solo Excel (sin Supabase)
-
-Edita `app.py`:
-```python
-if not db.test_connection():
-    use_db = False
-else:
-    use_db = True
-```
+- Detiene la app si no hay conexión
 
 ---
 
@@ -135,7 +112,6 @@ else:
 ### "Error al conectar a Supabase"
 - Verifica URL y KEY en `.env`
 - Comprueba conectividad a internet
-- El sistema usará Excel como fallback automáticamente
 
 ### "Tabla no encontrada"
 - Verifica que hayas ejecutado el SQL de `sql/database_schema.sql`
@@ -148,7 +124,6 @@ else:
 1. ✅ Ejecutar `sql/database_schema.sql` en Supabase
 2. ✅ Cargar datos de referencia (peajes, conceptos, etc.)
 3. ✅ Probar la validación con XML de ejemplo
-4. ✅ (Opcional) Crear script Python para migrar datos del Excel
 
 ---
 

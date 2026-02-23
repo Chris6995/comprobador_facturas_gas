@@ -14,17 +14,16 @@ def run() -> None:
 
     with st.spinner("Validando conexion..."):
         if not db.test_connection():
-            st.error("No se pudo conectar a Supabase. Usando fallback a Excel.")
-            use_db = False
-        else:
-            st.success("Conectado a Supabase")
-            use_db = True
+            st.error("No se pudo conectar a Supabase.")
+            st.stop()
+
+    st.success("Conectado a Supabase")
 
     xml_file = st.file_uploader("Sube el XML", type=["xml"])
 
     if st.button("Validar") and xml_file:
         try:
-            out = validate_from_streamlit_upload(xml_file, use_database=use_db)
+            out = validate_from_streamlit_upload(xml_file)
             st.write("### Resumen")
             st.write(out.summary)
             st.write("### Detalle de Conceptos")
