@@ -1,20 +1,27 @@
 """
 Script para migrar datos desde Excel a Supabase
-Exe: python migrate_excel_to_supabase.py
+Exe: python scripts/migrate_excel_to_supabase.py
 """
 
 import os
 import sys
+from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+# Asegura imports del paquete src/
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 # Cargar variables de entorno
-load_dotenv()
+load_dotenv(ROOT_DIR / ".env")
 
 try:
-    import db
+    from comprobador.infra import supabase_client as db
 except ImportError:
-    print("Error: No se pudo importar el módulo db.py")
+    print("Error: No se pudo importar el modulo de Supabase")
     sys.exit(1)
 
 

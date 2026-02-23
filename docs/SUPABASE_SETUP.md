@@ -17,7 +17,7 @@ Se ha migrado la aplicación de usar archivos Excel como referencia a usar una b
 
 1. Accede a tu proyecto Supabase: https://app.supabase.com
 2. Ve a "SQL Editor"
-3. Crea una nueva query y copia el contenido de `database_schema.sql`
+3. Crea una nueva query y copia el contenido de `sql/database_schema.sql`
 4. Ejecuta el script
 
 **Las siguientes tablas se crearán:**
@@ -74,14 +74,14 @@ Si falla:
 
 ## 📦 Archivos Nuevos
 
-### `db.py`
+### `src/comprobador/infra/supabase_client.py`
 Módulo de conexión y operaciones con Supabase:
 - `get_reference_tables()` - Carga todas las tablas
 - `get_peaje_by_type()` - Obtiene un peaje específico
 - `insert_validation_result()` - Inserta resultados
 - `test_connection()` - Prueba la conexión
 
-### `database_schema.sql`
+### `sql/database_schema.sql`
 Script SQL para crear todas las tablas. Ejecutar en Supabase SQL Editor.
 
 ### `.env` (actualizado)
@@ -94,12 +94,12 @@ SUPABASE_KEY=...
 
 ## 🔄 Cambios en el Backend
 
-### `backend.py`
+### `src/comprobador/core/validation.py`
 - `load_reference_tables()` ahora intenta Supabase primero, luego Excel como fallback
 - `validate_invoice()` tiene parámetro `use_database=True`
 - Compatible con versiones anteriores
 
-### `app.py`
+### `src/comprobador/ui/streamlit_app.py`
 - Verifica conexión a Supabase al iniciar
 - Usa BD automáticamente si está disponible
 
@@ -138,14 +138,14 @@ else:
 - El sistema usará Excel como fallback automáticamente
 
 ### "Tabla no encontrada"
-- Verifica que hayas ejecutado el SQL del `database_schema.sql`
+- Verifica que hayas ejecutado el SQL de `sql/database_schema.sql`
 - Lista las tablas en Supabase: SQL Editor → `SELECT * FROM information_schema.tables WHERE table_schema = 'public';`
 
 ---
 
 ## 📝 Próximos Pasos
 
-1. ✅ Ejecutar `database_schema.sql` en Supabase
+1. ✅ Ejecutar `sql/database_schema.sql` en Supabase
 2. ✅ Cargar datos de referencia (peajes, conceptos, etc.)
 3. ✅ Probar la validación con XML de ejemplo
 4. ✅ (Opcional) Crear script Python para migrar datos del Excel

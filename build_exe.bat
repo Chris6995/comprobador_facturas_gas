@@ -22,9 +22,9 @@ pyinstaller ^
   --name ValidadorXML ^
   --collect-all streamlit ^
   --add-data "app.py;." ^
-  --add-data "backend.py;." ^
+  --add-data "src;src" ^
   --add-data "data;data" ^
-  launcher_streamlit.py
+  scripts/launcher_streamlit.py
 
 echo.
 echo EXE generado en: dist\ValidadorXML.exe

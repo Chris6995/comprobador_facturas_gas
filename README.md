@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 ### 3. Configurar Supabase
 
-Lee [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) para:
+Lee [SUPABASE_SETUP.md](./docs/SUPABASE_SETUP.md) para:
 - Crear las tablas en Supabase
 - Cargar datos desde Excel
 - Verificar la conexión
@@ -52,16 +52,20 @@ Se abrirá en `http://localhost:8501`
 ## 📁 Estructura de Archivos
 
 ```
-├── app.py                          # Interfaz Streamlit
-├── backend.py                      # Lógica de validación
-├── db.py                          # Módulo de conexión a Supabase
-├── .env                           # Variables de entorno (NO en Git)
-├── database_schema.sql            # SQL para crear tablas
-├── migrate_excel_to_supabase.py   # Script para migrar datos
-├── requirements.txt               # Dependencias Python
-├── SUPABASE_SETUP.md              # Guía de configuración
-└── data/
-    └── Consumos-NEDGIA_SEPIOL_tablas.xlsx  # Datos legacy (Excel)
+├── app.py                                # Entrypoint Streamlit (wrapper)
+├── backend.py                            # Wrapper de compatibilidad
+├── db.py                                 # Wrapper de compatibilidad
+├── src/comprobador/
+│   ├── core/validation.py                # Lógica de validación
+│   ├── infra/supabase_client.py          # Integración con Supabase
+│   └── ui/streamlit_app.py               # Interfaz Streamlit
+├── scripts/
+│   ├── migrate_excel_to_supabase.py      # Script para migrar datos
+│   └── launcher_streamlit.py             # Entry point para EXE
+├── sql/database_schema.sql               # SQL para crear tablas
+├── docs/SUPABASE_SETUP.md                # Guía de configuración
+├── requirements.txt                      # Dependencias Python
+└── data/Consumos-NEDGIA_SEPIOL_tablas.xlsx
 ```
 
 ---
@@ -87,7 +91,7 @@ Se abrirá en `http://localhost:8501`
 Para cargar datos del Excel a Supabase automáticamente:
 
 ```bash
-python migrate_excel_to_supabase.py
+python scripts/migrate_excel_to_supabase.py
 ```
 
 ---
@@ -139,7 +143,7 @@ Ver `requirements.txt` para lista completa.
 ## 📝 Compilar a .exe (Windows)
 
 ```bash
-pyinstaller --onefile --add-data="data:data" launcher_streamlit.py -n ValidadorFacturas
+pyinstaller --onefile --add-data="data:data" scripts/launcher_streamlit.py -n ValidadorFacturas
 ```
 
 ---
@@ -150,9 +154,9 @@ pyinstaller --onefile --add-data="data:data" launcher_streamlit.py -n ValidadorF
 |----------|----------|
 | "SUPABASE_URL no encontrada" | Verifica `.env` y recarga terminal |
 | "No se pudo conectar a Supabase" | Comprueba URL y KEY, intenta con Excel |
-| "Tabla no encontrada" | Ejecuta `database_schema.sql` en Supabase |
+| "Tabla no encontrada" | Ejecuta `sql/database_schema.sql` en Supabase |
 
-Ver [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) para más detalles.
+Ver [SUPABASE_SETUP.md](./docs/SUPABASE_SETUP.md) para más detalles.
 
 ---
 

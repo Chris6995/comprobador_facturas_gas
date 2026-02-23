@@ -11,7 +11,10 @@ from streamlit.web import cli as stcli
 
 def _app_path() -> Path:
     base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return base_dir / "app.py"
+    app_in_base = base_dir / "app.py"
+    if app_in_base.exists():
+        return app_in_base
+    return base_dir.parent / "app.py"
 
 
 def main() -> int:
