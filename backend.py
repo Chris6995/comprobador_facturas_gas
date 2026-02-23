@@ -4,8 +4,16 @@ import io
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple, Union
+import os
 
 import pandas as pd
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
+
+# Importar módulo de base de datos
+import db
 
 
 # -------------------------
@@ -80,11 +88,32 @@ def parse_invoice_xml(
 
 
 # -------------------------
-# 2) Cargar tablas BOE (Excel REF)
+# 2) Cargar tablas de referencia (ahora desde Supabase)
 # -------------------------
-def load_reference_tables(excel_path: str) -> Dict[str, pd.DataFrame]:
+def load_reference_tables(excel_path: str = None) -> Dict[str, pd.DataFrame]:
     """
-    Carga las hojas REF del Excel y devuelve un dict con DataFrames.
+    Carga las tablas de referencia desde Supabase.
+    El parámetro excel_path se mantiene por compatibilidad pero no se usa.
+    
+    Si Supabase no está disponible, intenta cargar desde Excel como fallback.
+    """
+    try:
+        # Intentar cargar desde Supabase
+        return db.get_reference_tables()
+    except Exception as e:
+        # Fallback a Excel si Supabase falla
+        if excel_path and os.path.exists(excel_path):
+            print(f"Advertencia: No se pudo conectar a Supabase ({str(e)}). "
+                  f"Usando Excel como fallback: {excel_path}")
+            return load_reference_tables_from_excel(excel_path)
+        else:
+            raise Exception(f"No se pudo cargar tablas de referencia desde Supabase ni Excel: {str(e)}")
+
+
+def load_reference_tables_from_excel(excel_path: str) -> Dict[str, pd.DataFrame]:
+    """
+    Carga las tablas de referencia desde Excel (método legacy).
+    Se usa como fallback si Supabase no está disponible.
     """
     tables = {
         "local": pd.read_excel(excel_path, sheet_name="REF_peajes_local"),
@@ -165,16 +194,35 @@ def expected_price_boe(
 # -------------------------
 def validate_invoice(
     xml_input: Union[str, bytes],
-    excel_path: str,
+    excel_path: str = None,
     namespace_uri: str = "http://localhost/sctd/B7031",
     tol_price: float = 1e-6,
     tol_amount: float = 0.01,
+    use_database: bool = True,
 ) -> ValidationOutput:
     """
-    Valida una factura XML contra tablas BOE (REF) y devuelve un reporte.
+    Valida una factura XML contra tablas de referencia.
+    
+    Parámetros:
+      - xml_input: ruta o bytes del XML
+      - excel_path: ruta al Excel (usado si use_database=False o como fallback)
+      - namespace_uri: namespace del XML
+      - tol_price: tolerancia para precios
+      - tol_amount: tolerancia para importes
+      - use_database: True para usar Supabase, False para Excel
     """
     meta, df_conceptos = parse_invoice_xml(xml_input, namespace_uri=namespace_uri)
-    tables = load_reference_tables(excel_path)
+    
+    # Cargar tablas de referencia
+    if use_database:
+        try:
+            tables = load_reference_tables(excel_path=excel_path)
+        except Exception as e:
+            raise ValueError(f"No se pudo cargar datos desde base de datos: {str(e)}")
+    else:
+        if not excel_path:
+            excel_path = os.getenv("EXCEL_PATH")
+        tables = load_reference_tables_from_excel(excel_path)
 
     tipopeaje = meta.get("tipopeaje")
     if not tipopeaje:
@@ -252,14 +300,21 @@ def validate_invoice(
 # -------------------------
 def validate_from_streamlit_upload(
     uploaded_xml_file,
-    excel_path: str,
+    excel_path: str = None,
+    use_database: bool = True,
 ) -> ValidationOutput:
     """
     Helper para Streamlit:
       uploaded_xml_file = st.file_uploader(...)
+    
+    Valida usando Supabase por defecto (use_database=True).
     """
     if uploaded_xml_file is None:
         raise ValueError("No se ha subido ningún XML.")
 
+    # Si no se proporciona excel_path, obtenerlo del .env
+    if not excel_path:
+        excel_path = os.getenv("EXCEL_PATH")
+
     xml_bytes = uploaded_xml_file.getvalue()
-    return validate_invoice(xml_bytes, excel_path=excel_path)
+    return validate_invoice(xml_bytes, excel_path=excel_path, use_database=use_database)

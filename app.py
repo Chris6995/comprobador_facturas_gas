@@ -2,23 +2,35 @@ from pathlib import Path
 import sys
 
 import streamlit as st
+from dotenv import load_dotenv
 
-from backend import validate_from_streamlit_upload
+from backend import validate_from_streamlit_upload, db
 
+# Cargar variables de entorno
+load_dotenv()
 
-def _resource_path(relative_path: str) -> str:
-    base_dir = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-    return str(base_dir / relative_path)
+st.title("Validador XML de Facturas")
 
-
-EXCEL_PATH = _resource_path("data/Consumos-NEDGIA_SEPIOL_tablas.xlsx")
-
-st.title("Validador XML")
+# Prueba de conexión a Supabase
+with st.spinner("Validando conexión..."):
+    if not db.test_connection():
+        st.error("⚠️ No se pudo conectar a Supabase. Usando fallback a Excel.")
+        use_db = False
+    else:
+        st.success("✅ Conectado a Supabase")
+        use_db = True
 
 xml_file = st.file_uploader("Sube el XML", type=["xml"])
 
 if st.button("Validar") and xml_file:
-    out = validate_from_streamlit_upload(xml_file, excel_path=EXCEL_PATH)
+    try:
+        out = validate_from_streamlit_upload(xml_file, use_database=use_db)
+        
+        st.write("### Resumen")
+        st.write(out.summary)
+        
+        st.write("### Detalle de Conceptos")
+        st.dataframe(out.df_result, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error en validación: {str(e)}")
 
-    st.write(out.summary)
-    st.dataframe(out.df_result, use_container_width=True)
