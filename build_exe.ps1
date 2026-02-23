@@ -22,6 +22,7 @@ pyinstaller `
     --collect-all streamlit `
     --add-data "app.py;." `
     --add-data "src;src" `
+    --add-data "data;data" `
     scripts/launcher_streamlit.py
 
 Write-Host ""

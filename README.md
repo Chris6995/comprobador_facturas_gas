@@ -7,6 +7,7 @@ Aplicación web para validar facturas XML contra tablas de referencia de peajes 
 - ✅ Validación de facturas XML (SCTD B7031)
 - ✅ Consulta de tarificación BOE en **Supabase** (base de datos)
 - ✅ Historial de validaciones
+- ✅ Fallback automático a Excel si no hay BD
 - ✅ Interfaz web con Streamlit
 
 ## 📋 Requisitos
@@ -35,6 +36,7 @@ pip install -r requirements.txt
 
 Lee [SUPABASE_SETUP.md](./docs/SUPABASE_SETUP.md) para:
 - Crear las tablas en Supabase
+- Cargar datos desde Excel
 - Verificar la conexión
 
 ### 4. Ejecutar aplicación
@@ -58,10 +60,12 @@ Se abrirá en `http://localhost:8501`
 │   ├── infra/supabase_client.py          # Integración con Supabase
 │   └── ui/streamlit_app.py               # Interfaz Streamlit
 ├── scripts/
+│   ├── migrate_excel_to_supabase.py      # Script para migrar datos
 │   └── launcher_streamlit.py             # Entry point para EXE
 ├── sql/database_schema.sql               # SQL para crear tablas
 ├── docs/SUPABASE_SETUP.md                # Guía de configuración
-└── requirements.txt                      # Dependencias Python
+├── requirements.txt                      # Dependencias Python
+└── data/Consumos-NEDGIA_SEPIOL_tablas.xlsx
 ```
 
 ---
@@ -79,6 +83,16 @@ Se abrirá en `http://localhost:8501`
 ### Tablas de Auditoría
 - `validaciones` - Registro de validaciones
 - `conceptos_validados` - Detalle de conceptos
+
+---
+
+## 🔄 Migración desde Excel
+
+Para cargar datos del Excel a Supabase automáticamente:
+
+```bash
+python scripts/migrate_excel_to_supabase.py
+```
 
 ---
 
@@ -139,7 +153,7 @@ pyinstaller --onefile --add-data="data:data" scripts/launcher_streamlit.py -n Va
 | Problema | Solución |
 |----------|----------|
 | "SUPABASE_URL no encontrada" | Verifica `.env` y recarga terminal |
-| "No se pudo conectar a Supabase" | Comprueba URL y KEY |
+| "No se pudo conectar a Supabase" | Comprueba URL y KEY, intenta con Excel |
 | "Tabla no encontrada" | Ejecuta `sql/database_schema.sql` en Supabase |
 
 Ver [SUPABASE_SETUP.md](./docs/SUPABASE_SETUP.md) para más detalles.
