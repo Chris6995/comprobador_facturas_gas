@@ -10,6 +10,7 @@ ALTER TABLE public.peajes_cargo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.peajes_transporte ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.peajes_multiplicadores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conceptos_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cups_contratos ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS peajes_local_select_anon ON public.peajes_local;
 CREATE POLICY peajes_local_select_anon
@@ -49,6 +50,13 @@ USING (true);
 DROP POLICY IF EXISTS conceptos_rules_select_anon ON public.conceptos_rules;
 CREATE POLICY conceptos_rules_select_anon
 ON public.conceptos_rules
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+DROP POLICY IF EXISTS cups_contratos_select_anon ON public.cups_contratos;
+CREATE POLICY cups_contratos_select_anon
+ON public.cups_contratos
 FOR SELECT
 TO anon, authenticated
 USING (true);

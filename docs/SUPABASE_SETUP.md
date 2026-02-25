@@ -30,6 +30,7 @@ Se ha migrado la aplicación de usar archivos Excel como referencia a usar una b
 - `peajes_transporte` - Peajes de transporte
 - `peajes_multiplicadores` - Multiplicadores
 - `conceptos_rules` - Reglas de validación
+- `cups_contratos` - Tarifa/capacidad/interrumpibilidad por CUPS
 
 #### Tablas de Auditoría:
 - `validaciones` - Registro de validaciones realizadas
@@ -78,6 +79,7 @@ Si falla:
 ### `src/comprobador/infra/supabase_client.py`
 Módulo de conexión y operaciones con Supabase:
 - `get_reference_tables()` - Carga todas las tablas
+- `get_cups_contract()` - Obtiene referencia contractual por CUPS
 - `get_peaje_by_type()` - Obtiene un peaje específico
 - `insert_validation_result()` - Inserta resultados
 - `test_connection()` - Prueba la conexión

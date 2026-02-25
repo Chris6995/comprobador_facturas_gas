@@ -79,6 +79,7 @@ Se abrirá en `http://localhost:8501`
 - `peajes_transporte` - Peajes de transporte
 - `peajes_multiplicadores` - Multiplicadores
 - `conceptos_rules` - Reglas de validación
+- `cups_contratos` - Referencia contractual por CUPS (tarifa, QD, interrumpibilidad)
 
 ### Tablas de Auditoría
 - `validaciones` - Registro de validaciones
@@ -93,6 +94,26 @@ Para cargar datos del Excel a Supabase automáticamente:
 ```bash
 python scripts/migrate_excel_to_supabase.py
 ```
+
+Para cargar referencias contractuales por CUPS desde `Info_CDM_Bot.xlsx`:
+
+```bash
+python scripts/migrate_cups_contracts.py --excel data/Info_CDM_Bot.xlsx
+```
+
+Si solo quieres generar y revisar el DataFrame/CSV normalizado:
+
+```bash
+python scripts/migrate_cups_contracts.py --excel data/Info_CDM_Bot.xlsx --skip-db
+```
+
+## ✅ Validación XML con 2 Excels (sin BD)
+
+La validación en modo Excel usa:
+- `Consumos-NEDGIA_SEPIOL_tablas.xlsx` para precios/referencias BOE.
+- `Info_CDM_Bot.xlsx` para datos contractuales por CUPS (tarifa y QD contratada).
+
+Puedes indicar la ruta del segundo Excel con `CUPS_CONTRACTS_EXCEL_PATH`.
 
 ---
 

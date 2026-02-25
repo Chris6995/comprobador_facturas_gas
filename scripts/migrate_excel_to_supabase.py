@@ -147,20 +147,72 @@ def migrate_peajes_transporte(excel_path: str) -> bool:
         return False
 
 
+def migrate_peajes_multiplicadores(excel_path: str) -> bool:
+    """Migra multiplicadores (diario/mensual/trimestral/intradiario)."""
+    try:
+        df = pd.read_excel(excel_path, sheet_name="REF_multiplicadores")
+
+        for _, row in df.iterrows():
+            fecha = pd.to_datetime(row.get("fecha"), errors="coerce")
+            if pd.isna(fecha):
+                continue
+
+            data_new = {
+                "fecha": fecha.date().isoformat(),
+                "trimestral": float(row.get("trimestral") or 0),
+                "mensual": float(row.get("mensual") or 0),
+                "diario": float(row.get("diario") or 0),
+                "intradiario": float(row.get("intradiario") or 0),
+            }
+
+            try:
+                db.supabase.table("peajes_multiplicadores").upsert(
+                    data_new,
+                    on_conflict="fecha",
+                ).execute()
+            except Exception:
+                # Compatibilidad con esquema legacy (peaje/multiplicador)
+                data_legacy = {
+                    "peaje": data_new["fecha"],
+                    "multiplicador": data_new["diario"],
+                }
+                db.supabase.table("peajes_multiplicadores").upsert(
+                    data_legacy,
+                    on_conflict="peaje",
+                ).execute()
+
+            print(f"✅ Insertado multiplicador fecha: {data_new['fecha']}")
+
+        return True
+    except Exception as e:
+        print(f"❌ Error migrando peajes_multiplicadores: {str(e)}")
+        return False
+
+
 def migrate_conceptos_rules(excel_path: str) -> bool:
     """Migra reglas de conceptos"""
     try:
         df = pd.read_excel(excel_path, sheet_name="REF_rules_conceptos")
-        
-        rules_mapping = {
-            "2000": ("Término Variable Local", "peajes_local", "tv"),
-            "2002": ("Término Fijo Local", "peajes_local", "tf"),
-            "2006": ("Transporte", "peajes_transporte", "tf_transporte"),
-            "2009": ("Regasificación", "peajes_regas", "tf_regas"),
-            "2011": ("Cargo Ministerio", "peajes_cargo", "tf_cargo"),
+
+        table_map = {
+            "REF_peajes_local": "peajes_local",
+            "REF_peajes_transporte": "peajes_transporte",
+            "REF_peajes_regas": "peajes_regas",
+            "REF_cargo_ministerio": "peajes_cargo",
+            "REF_multiplicadores": "peajes_multiplicadores",
         }
-        
-        for cod, (desc, tabla, col) in rules_mapping.items():
+
+        for _, row in df.iterrows():
+            cod = str(row.get("codconcepto") or "").strip()
+            if not cod:
+                continue
+
+            cod = cod.replace(".0", "")
+            desc = str(row.get("descripcion") or "").strip() or None
+            ref_sheet = str(row.get("ref_sheet") or "").strip()
+            tabla = table_map.get(ref_sheet, ref_sheet)
+            col = str(row.get("value_col") or "").strip() or None
+
             data = {
                 "cod_concepto": cod,
                 "descripcion": desc,
@@ -168,9 +220,12 @@ def migrate_conceptos_rules(excel_path: str) -> bool:
                 "columna_referencia": col,
                 "requiere_validacion": True,
             }
-            
-            db.supabase.table("conceptos_rules").upsert(data).execute()
-            print(f"✅ Insertada regla: {cod} - {desc}")
+
+            db.supabase.table("conceptos_rules").upsert(
+                data,
+                on_conflict="cod_concepto",
+            ).execute()
+            print(f"✅ Insertada regla: {cod} - {desc or 'sin descripcion'}")
         
         return True
     except Exception as e:
@@ -207,6 +262,7 @@ def main():
     results.append(("Peajes Regas", migrate_peajes_regas(excel_path)))
     results.append(("Peajes Cargo", migrate_peajes_cargo(excel_path)))
     results.append(("Peajes Transporte", migrate_peajes_transporte(excel_path)))
+    results.append(("Peajes Multiplicadores", migrate_peajes_multiplicadores(excel_path)))
     results.append(("Reglas de Conceptos", migrate_conceptos_rules(excel_path)))
     
     print()

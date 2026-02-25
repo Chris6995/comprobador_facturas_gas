@@ -57,6 +57,23 @@ CREATE TABLE IF NOT EXISTS public.conceptos_rules (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.cups_contratos (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  cups VARCHAR(50) NOT NULL UNIQUE,
+  agente VARCHAR(255),
+  provincia VARCHAR(100),
+  distribuidora VARCHAR(150),
+  tarifa VARCHAR(30),
+  cogeneracion VARCHAR(20),
+  qd_contratada_kwh NUMERIC(14, 3),
+  interrumpibilidad VARCHAR(30),
+  interrumpibilidad_detalle VARCHAR(100),
+  pctd VARCHAR(120),
+  inicio_actividad DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================
 -- TABLAS DE AUDITORIA Y RESULTADOS
 -- ============================================
@@ -98,6 +115,7 @@ CREATE INDEX IF NOT EXISTS idx_validaciones_cups ON public.validaciones(cups);
 CREATE INDEX IF NOT EXISTS idx_validaciones_created ON public.validaciones(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conceptos_validados_validacion ON public.conceptos_validados(validacion_id);
 CREATE INDEX IF NOT EXISTS idx_conceptos_rules_cod ON public.conceptos_rules(cod_concepto);
+CREATE INDEX IF NOT EXISTS idx_cups_contratos_cups ON public.cups_contratos(cups);
 
 -- ============================================
 -- updated_at auto (OPCIONAL, recomendado)

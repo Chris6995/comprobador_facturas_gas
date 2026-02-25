@@ -55,6 +55,9 @@ def get_reference_tables() -> Dict[str, pd.DataFrame]:
         # Reglas de validación
         tables["rules"] = _fetch_table_as_df("conceptos_rules")
 
+        # Referencias por CUPS (capacidad/tarifa)
+        tables["cups_contracts"] = _fetch_table_as_df("cups_contratos")
+
         return tables
 
     except Exception as e:
@@ -117,6 +120,25 @@ def get_peaje_by_type(table_name: str, peaje: str) -> Optional[Dict[str, Any]]:
         return None
     except Exception as e:
         raise Exception(f"Error al obtener peaje {peaje} de {table_name}: {str(e)}")
+
+
+def get_cups_contract(cups: str) -> Optional[Dict[str, Any]]:
+    """
+    Obtiene la referencia contractual para un CUPS.
+    """
+    try:
+        response = (
+            supabase.table("cups_contratos")
+            .select("*")
+            .eq("cups", cups)
+            .limit(1)
+            .execute()
+        )
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        raise Exception(f"Error al obtener contrato de CUPS {cups}: {str(e)}")
 
 
 def insert_validation_result(
