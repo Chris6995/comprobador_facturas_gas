@@ -57,7 +57,7 @@ Se abrirá en `http://localhost:8501`
 ├── db.py                                 # Wrapper de compatibilidad
 ├── scripts/
 │   ├── migrate_excel_to_supabase.py      # Script para migrar datos
-│   └── launcher_streamlit.py             # Entry point para EXE
+│   └── migrate_cups_contracts.py         # Carga referencias CUPS/contratos
 ├── sql/database_schema.sql               # SQL para crear tablas
 ├── docs/SUPABASE_SETUP.md                # Guía de configuración
 ├── requirements.txt                      # Dependencias Python
@@ -154,14 +154,6 @@ Ver `requirements.txt` para lista completa.
 - ⚠️ Las credenciales de Supabase están en `.env` (NO incluir en Git)
 - 🔒 Usa variables de entorno para SUPABASE_URL y SUPABASE_KEY
 - 🔐 En producción, habilita Row Level Security (RLS) en Supabase
-
----
-
-## 📝 Compilar a .exe (Windows)
-
-```bash
-pyinstaller --onefile --add-data="data:data" scripts/launcher_streamlit.py -n ValidadorFacturas
-```
 
 ---
 

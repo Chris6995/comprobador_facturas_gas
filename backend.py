@@ -212,6 +212,20 @@ def _clean_text(value: Any) -> Optional[str]:
     return text
 
 
+def _as_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _load_cups_contracts_from_excel() -> pd.DataFrame:
     candidates = [os.getenv("CUPS_CONTRACTS_EXCEL_PATH"), "data/Info_CDM_Bot.xlsx"]
     cups_excel_path = next((p for p in candidates if p and os.path.exists(p)), None)
@@ -349,18 +363,31 @@ def _expected_price_from_rules(codconcepto: str, tipopeaje: str, tables: Dict[st
     if lookup_key.lower() == "tipopeaje" and "peaje" in df_ref.columns:
         row = df_ref[df_ref["peaje"] == tipopeaje]
         if not row.empty:
-            return float(row.iloc[0][col])
+            return _as_float(row.iloc[0][col])
         return None
 
     if lookup_key and "punto_salida" in df_ref.columns:
         mask = df_ref["punto_salida"].astype(str).str.upper().str.contains(lookup_key.upper(), na=False)
         row = df_ref[mask]
         if not row.empty:
-            return float(row.iloc[0][col])
+            return _as_float(row.iloc[0][col])
+
+    # Si en Supabase no hay lookup_key, inferir comportamiento equivalente al Excel.
+    if not lookup_key:
+        if "peaje" in df_ref.columns:
+            row = df_ref[df_ref["peaje"] == tipopeaje]
+            if not row.empty:
+                return _as_float(row.iloc[0][col])
+        if "punto_salida" in df_ref.columns:
+            row = df_ref[
+                df_ref["punto_salida"].astype(str).str.upper().str.contains("SALIDA NACIONAL", na=False)
+            ]
+            if not row.empty:
+                return _as_float(row.iloc[0][col])
 
     series = pd.to_numeric(df_ref[col], errors="coerce").dropna()
     if not series.empty:
-        return float(series.iloc[0])
+        return _as_float(series.iloc[0])
     return None
 
 
@@ -374,28 +401,35 @@ def expected_price_boe(codconcepto: str, tipopeaje: str, tables: Dict[str, pd.Da
     df_cargo = tables.get("cargo", pd.DataFrame())
     df_transporte = tables.get("transporte", pd.DataFrame())
 
-    if codconcepto == "2002":
+    if codconcepto in {"2002", "2003"}:
         row = df_local[df_local.get("peaje") == tipopeaje] if "peaje" in df_local.columns else pd.DataFrame()
-        return float(row.iloc[0]["tf"]) if not row.empty and "tf" in row.columns else None
+        return _as_float(row.iloc[0]["tf"]) if not row.empty and "tf" in row.columns else None
     if codconcepto == "2000":
         row = df_local[df_local.get("peaje") == tipopeaje] if "peaje" in df_local.columns else pd.DataFrame()
-        return float(row.iloc[0]["tv"]) if not row.empty and "tv" in row.columns else None
+        return _as_float(row.iloc[0]["tv"]) if not row.empty and "tv" in row.columns else None
     if codconcepto == "2009":
         row = df_regas[df_regas.get("peaje") == tipopeaje] if "peaje" in df_regas.columns else pd.DataFrame()
         if row.empty:
             return None
         col = "tf_regas" if "tf_regas" in row.columns else "tf"
-        return float(row.iloc[0][col]) if col in row.columns else None
+        return _as_float(row.iloc[0][col]) if col in row.columns else None
     if codconcepto == "2011":
         row = df_cargo[df_cargo.get("peaje") == tipopeaje] if "peaje" in df_cargo.columns else pd.DataFrame()
         if row.empty:
             return None
         col = "tf_cargo" if "tf_cargo" in row.columns else "tf"
-        return float(row.iloc[0][col]) if col in row.columns else None
-    if codconcepto == "2006":
+        return _as_float(row.iloc[0][col]) if col in row.columns else None
+    if codconcepto in {"2006", "2007"}:
         for col in ["tf_transporte €/(kWh/día) y año", "tf", "tf_tp", "tf_transporte"]:
             if col in df_transporte.columns:
-                return float(df_transporte.iloc[0][col])
+                return _as_float(df_transporte.iloc[0][col])
+    if codconcepto == "2004":
+        for col in ["tv_transporte (€/kWh)", "tv", "tv_tp", "tv_transporte"]:
+            if col in df_transporte.columns:
+                return _as_float(df_transporte.iloc[0][col])
+        # Paridad con Excel actual: TV transporte en Salida Nacional es 0.0.
+        # Si en Supabase no existe la columna de TV, usamos 0.0 como fallback.
+        return 0.0
     return None
 
 
@@ -738,6 +772,43 @@ def validate_from_streamlit_upload(uploaded_xml_file, excel_path: str = None, us
     return validate_invoice(xml_bytes, excel_path=excel_path, use_database=use_database)
 
 
+def compare_excel_vs_supabase(xml_path: str, excel_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Compara salida de validación Excel vs Supabase para el mismo XML.
+    Útil para depurar paridad entre ambos orígenes.
+    """
+    out_excel = validate_invoice(xml_path, excel_path=excel_path, use_database=False)
+    out_db = validate_invoice(xml_path, excel_path=excel_path, use_database=True)
+
+    cols = ["codconcepto", "desconcepto", "estado", "precunidad_boe", "importe_calc_boe"]
+    df_e = out_excel.df_result[cols].copy().reset_index(drop=True)
+    df_d = out_db.df_result[cols].copy().reset_index(drop=True)
+    df_e["row_id"] = df_e.index
+    df_d["row_id"] = df_d.index
+    merged = df_e.merge(df_d, on="row_id", suffixes=("_excel", "_db"), how="outer")
+
+    def _same_num(a: Any, b: Any) -> bool:
+        if pd.isna(a) and pd.isna(b):
+            return True
+        if pd.isna(a) or pd.isna(b):
+            return False
+        return abs(float(a) - float(b)) <= 1e-6
+
+    mask_diff = []
+    for _, row in merged.iterrows():
+        estado_diff = (row.get("estado_excel") or "") != (row.get("estado_db") or "")
+        precio_diff = not _same_num(row.get("precunidad_boe_excel"), row.get("precunidad_boe_db"))
+        mask_diff.append(bool(estado_diff or precio_diff))
+
+    diffs = merged[pd.Series(mask_diff, index=merged.index)]
+
+    return {
+        "summary_excel": out_excel.summary,
+        "summary_db": out_db.summary,
+        "different_rows": diffs.fillna("").to_dict(orient="records"),
+    }
+
+
 __all__ = [
     "ValidationOutput",
     "parse_invoice_xml",
@@ -746,6 +817,7 @@ __all__ = [
     "expected_price_boe",
     "validate_invoice",
     "validate_from_streamlit_upload",
+    "compare_excel_vs_supabase",
     "test_connection",
     "get_reference_tables",
     "get_cups_contract",

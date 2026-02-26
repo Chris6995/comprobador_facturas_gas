@@ -43,7 +43,10 @@ def migrate_peajes_local(excel_path: str) -> bool:
                 "tv": float(row.get("tv") or 0),
             }
             
-            _client().table("peajes_local").upsert(data).execute()
+            _client().table("peajes_local").upsert(
+                data,
+                on_conflict="peaje",
+            ).execute()
             print(f"✅ Insertado peaje local: {peaje}")
         
         return True
@@ -77,7 +80,10 @@ def migrate_peajes_regas(excel_path: str) -> bool:
                 "tf_regas": tf_regas,
             }
             
-            _client().table("peajes_regas").upsert(data).execute()
+            _client().table("peajes_regas").upsert(
+                data,
+                on_conflict="peaje",
+            ).execute()
             print(f"✅ Insertado peaje regas: {peaje}")
         
         return True
@@ -111,7 +117,10 @@ def migrate_peajes_cargo(excel_path: str) -> bool:
                 "tf_cargo": tf_cargo,
             }
             
-            _client().table("peajes_cargo").upsert(data).execute()
+            _client().table("peajes_cargo").upsert(
+                data,
+                on_conflict="peaje",
+            ).execute()
             print(f"✅ Insertado cargo ministerio: {peaje}")
         
         return True
