@@ -1,5 +1,16 @@
 from __future__ import annotations
 
+"""
+Backend único del proyecto.
+
+Este módulo concentra:
+1) Conexión y lecturas/escrituras en Supabase.
+2) Carga de tablas de referencia (Supabase o Excel fallback).
+3) Parseo del XML de factura.
+4) Validación de conceptos y cálculos de negocio.
+5) Helpers para Streamlit y para comparar paridad Excel vs Supabase.
+"""
+
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -21,18 +32,27 @@ load_dotenv()
 
 @dataclass
 class ValidationOutput:
+    """Salida estándar de validación."""
+
     meta: Dict[str, Any]
     df_result: pd.DataFrame
     summary: Dict[str, Any]
 
 
+# =========================================================
+# Supabase
+# =========================================================
 def _supabase_credentials() -> Tuple[Optional[str], Optional[str]]:
+    """Obtiene credenciales desde entorno priorizando service role key."""
+
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
     return url, key
 
 
 def _get_supabase_client() -> Client:
+    """Construye cliente Supabase validando dependencias y credenciales."""
+
     url, key = _supabase_credentials()
     if create_client is None:
         raise RuntimeError("supabase-py no está instalado")
@@ -44,10 +64,14 @@ def _get_supabase_client() -> Client:
 
 
 def get_supabase_client() -> Client:
+    """Versión pública del cliente para scripts de migración."""
+
     return _get_supabase_client()
 
 
 def _fetch_table_as_df(table_name: str) -> pd.DataFrame:
+    """Descarga una tabla completa de Supabase a DataFrame."""
+
     client = _get_supabase_client()
     response = client.table(table_name).select("*").execute()
     data = response.data
@@ -57,12 +81,16 @@ def _fetch_table_as_df(table_name: str) -> pd.DataFrame:
 
 
 def _count_rows(table_name: str) -> int:
+    """Cuenta filas visibles en una tabla de Supabase."""
+
     client = _get_supabase_client()
     response = client.table(table_name).select("id", count="exact").limit(1).execute()
     return int(response.count or 0)
 
 
 def get_reference_tables() -> Dict[str, pd.DataFrame]:
+    """Carga todas las tablas de referencia necesarias para validar."""
+
     return {
         "local": _fetch_table_as_df("peajes_local"),
         "regas": _fetch_table_as_df("peajes_regas"),
@@ -75,6 +103,8 @@ def get_reference_tables() -> Dict[str, pd.DataFrame]:
 
 
 def get_cups_contract(cups: str) -> Optional[Dict[str, Any]]:
+    """Devuelve fila contractual del CUPS (tarifa, QD, etc.)."""
+
     client = _get_supabase_client()
     response = client.table("cups_contratos").select("*").eq("cups", cups).limit(1).execute()
     if response.data:
@@ -83,6 +113,8 @@ def get_cups_contract(cups: str) -> Optional[Dict[str, Any]]:
 
 
 def insert_validation_result(validation_data: Dict[str, Any], result_rows: List[Dict[str, Any]]) -> bool:
+    """Guarda resultado de validación y detalle de conceptos en Supabase."""
+
     client = _get_supabase_client()
     val_response = client.table("validaciones").insert(validation_data).execute()
     if not val_response.data:
@@ -95,6 +127,8 @@ def insert_validation_result(validation_data: Dict[str, Any], result_rows: List[
 
 
 def get_validation_history(cups: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """Histórico de validaciones por CUPS."""
+
     client = _get_supabase_client()
     response = (
         client.table("validaciones")
@@ -108,6 +142,8 @@ def get_validation_history(cups: str, limit: int = 10) -> List[Dict[str, Any]]:
 
 
 def test_connection() -> bool:
+    """Comprueba conectividad y que haya datos de referencia mínimos."""
+
     try:
         client = _get_supabase_client()
         client.table("peajes_local").select("id").limit(1).execute()
@@ -124,10 +160,19 @@ def test_connection() -> bool:
         return False
 
 
+# =========================================================
+# XML
+# =========================================================
 def parse_invoice_xml(
     xml_input: Union[str, bytes],
     namespace_uri: str = "http://localhost/sctd/B7031",
 ) -> Tuple[Dict[str, Any], pd.DataFrame]:
+    """
+    Parsea el XML de factura y devuelve:
+    - meta: datos de cabecera útiles para validación.
+    - df_conceptos: conceptos facturados (precio, importe, fechas, impuestos...).
+    """
+
     ns = {"s": namespace_uri}
     if isinstance(xml_input, bytes):
         tree = ET.ElementTree(ET.fromstring(xml_input))
@@ -188,6 +233,8 @@ def parse_invoice_xml(
 
 
 def load_reference_tables(excel_path: str = None) -> Dict[str, pd.DataFrame]:
+    """Carga tablas desde Supabase; si falla, usa Excel como fallback."""
+
     try:
         return get_reference_tables()
     except Exception as e:
@@ -197,6 +244,8 @@ def load_reference_tables(excel_path: str = None) -> Dict[str, pd.DataFrame]:
 
 
 def _clean_cups(value: Any) -> Optional[str]:
+    """Normaliza CUPS (sin espacios, mayúsculas)."""
+
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     cups = re.sub(r"\s+", "", str(value)).upper().strip()
@@ -204,6 +253,8 @@ def _clean_cups(value: Any) -> Optional[str]:
 
 
 def _clean_text(value: Any) -> Optional[str]:
+    """Limpia textos genéricos; convierte '-' o vacío en None."""
+
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     text = str(value).strip().replace("\xa0", "")
@@ -213,6 +264,8 @@ def _clean_text(value: Any) -> Optional[str]:
 
 
 def _as_float(value: Any) -> Optional[float]:
+    """Conversión segura a float; devuelve None para null/NaN/no numérico."""
+
     if value is None:
         return None
     try:
@@ -227,6 +280,8 @@ def _as_float(value: Any) -> Optional[float]:
 
 
 def _load_cups_contracts_from_excel() -> pd.DataFrame:
+    """Carga referencia de contratos CUPS desde Info_CDM_Bot.xlsx."""
+
     candidates = [os.getenv("CUPS_CONTRACTS_EXCEL_PATH"), "data/Info_CDM_Bot.xlsx"]
     cups_excel_path = next((p for p in candidates if p and os.path.exists(p)), None)
     if not cups_excel_path:
@@ -247,6 +302,8 @@ def _load_cups_contracts_from_excel() -> pd.DataFrame:
 
 
 def load_reference_tables_from_excel(excel_path: str) -> Dict[str, pd.DataFrame]:
+    """Carga tablas BOE desde Excel (modo local/fallback)."""
+
     tables = {
         "local": pd.read_excel(excel_path, sheet_name="REF_peajes_local"),
         "regas": pd.read_excel(excel_path, sheet_name="REF_peajes_regas"),
@@ -260,6 +317,8 @@ def load_reference_tables_from_excel(excel_path: str) -> Dict[str, pd.DataFrame]
 
 
 def _get_cups_contract_from_tables(cups: Optional[str], tables: Dict[str, pd.DataFrame]) -> Optional[Dict[str, Any]]:
+    """Busca contrato de CUPS en tabla local cargada desde Excel."""
+
     if not cups:
         return None
     df = tables.get("cups_contracts", pd.DataFrame())
@@ -277,6 +336,11 @@ def expected_capacity_unit(
     diascapacidadcontratada: float,
     coeficiente: float,
 ) -> Optional[float]:
+    """
+    Unidad esperada para términos fijos de capacidad:
+    qd_contratada_kwh * dias * coeficiente / 365
+    """
+
     fixed_capacity_codes = {"2002", "2006", "2009", "2011"}
     if codconcepto not in fixed_capacity_codes or not cups_contract:
         return None
@@ -291,6 +355,8 @@ def expected_capacity_unit(
 
 
 def _normalize_code(code: Any) -> str:
+    """Normaliza codconcepto (ej: 2006.0 -> 2006)."""
+
     if code is None:
         return ""
     text = str(code).strip()
@@ -300,6 +366,8 @@ def _normalize_code(code: Any) -> str:
 
 
 def _rules_columns(df_rules: pd.DataFrame) -> Dict[str, str]:
+    """Mapea nombres de columnas rules para esquema Excel o Supabase."""
+
     cols = set(df_rules.columns)
     out: Dict[str, str] = {}
     out["cod"] = "codconcepto" if "codconcepto" in cols else "cod_concepto"
@@ -311,6 +379,8 @@ def _rules_columns(df_rules: pd.DataFrame) -> Dict[str, str]:
 
 
 def _resolve_table_by_rule(sheet_name: str, tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Resuelve nombre de tabla lógica a key interna del diccionario tables."""
+
     mapping = {
         "REF_peajes_local": "local",
         "peajes_local": "local",
@@ -328,6 +398,8 @@ def _resolve_table_by_rule(sheet_name: str, tables: Dict[str, pd.DataFrame]) -> 
 
 
 def _resolve_value_column(df: pd.DataFrame, value_col: str) -> Optional[str]:
+    """Resuelve columna de valor con matching exacto o aproximado."""
+
     if value_col in df.columns:
         return value_col
     norm_target = str(value_col).strip().lower().replace(" ", "_")
@@ -339,6 +411,8 @@ def _resolve_value_column(df: pd.DataFrame, value_col: str) -> Optional[str]:
 
 
 def _expected_price_from_rules(codconcepto: str, tipopeaje: str, tables: Dict[str, pd.DataFrame]) -> Optional[float]:
+    """Obtiene precio esperado aplicando tabla de reglas dinámica."""
+
     df_rules = tables.get("rules", pd.DataFrame())
     if df_rules.empty:
         return None
@@ -392,6 +466,8 @@ def _expected_price_from_rules(codconcepto: str, tipopeaje: str, tables: Dict[st
 
 
 def expected_price_boe(codconcepto: str, tipopeaje: str, tables: Dict[str, pd.DataFrame]) -> Optional[float]:
+    """Precio BOE esperado por concepto y peaje (rules + fallback legacy)."""
+
     price_from_rules = _expected_price_from_rules(codconcepto, tipopeaje, tables)
     if price_from_rules is not None:
         return price_from_rules
@@ -434,10 +510,14 @@ def expected_price_boe(codconcepto: str, tipopeaje: str, tables: Dict[str, pd.Da
 
 
 def _month_start(dt: pd.Timestamp) -> pd.Timestamp:
+    """Normaliza una fecha al primer día de su mes."""
+
     return pd.Timestamp(year=dt.year, month=dt.month, day=1)
 
 
 def _period_days_from_conceptos(df_conceptos: pd.DataFrame) -> Optional[int]:
+    """Extrae días de periodo desde fecdesde/fechasta del XML."""
+
     if df_conceptos.empty or "fecdesde" not in df_conceptos.columns or "fechasta" not in df_conceptos.columns:
         return None
     work = df_conceptos[df_conceptos["fecdesde"].notna() & df_conceptos["fechasta"].notna()]
@@ -453,6 +533,8 @@ def _period_days_from_conceptos(df_conceptos: pd.DataFrame) -> Optional[int]:
 
 
 def _consumo_global_mensual_xml(df_result: pd.DataFrame) -> Optional[float]:
+    """Consumo global mensual del XML (unidad de 2000/2004)."""
+
     if df_result.empty or "codconcepto" not in df_result.columns:
         return None
     mask = df_result["codconcepto"].astype(str).isin({"2000", "2004"})
@@ -462,6 +544,8 @@ def _consumo_global_mensual_xml(df_result: pd.DataFrame) -> Optional[float]:
 
 
 def expected_coef_cortoplazo_from_tables(codconcepto: str, fecdesde: Optional[str], tables: Dict[str, pd.DataFrame]) -> Optional[float]:
+    """Coeficiente esperado según tabla de multiplicadores y fecha."""
+
     fixed_codes = {"2002", "2006", "2009", "2011"}
     short_daily_codes = {"2003", "2007"}
     if codconcepto in fixed_codes:
@@ -510,6 +594,18 @@ def validate_invoice(
     tol_consumption: float = 0.01,
     use_database: bool = True,
 ) -> ValidationOutput:
+    """
+    Función principal de validación.
+
+    Compara XML vs cálculos con tablas (BOE/contratos):
+    - Precio unitario por concepto.
+    - Importe calculado vs importe facturado.
+    - QD y tarifa por CUPS.
+    - Coeficiente de cortoplazo.
+    - Total factura, base imponible e IVA.
+    - Consumo indefinido calculado.
+    """
+
     meta, df_conceptos = parse_invoice_xml(xml_input, namespace_uri=namespace_uri)
 
     if use_database:
@@ -764,6 +860,8 @@ def validate_invoice(
 
 
 def validate_from_streamlit_upload(uploaded_xml_file, excel_path: str = None, use_database: bool = True) -> ValidationOutput:
+    """Adaptador para `st.file_uploader`: valida bytes subidos en Streamlit."""
+
     if uploaded_xml_file is None:
         raise ValueError("No se ha subido ningún XML.")
     if not excel_path:
@@ -773,10 +871,7 @@ def validate_from_streamlit_upload(uploaded_xml_file, excel_path: str = None, us
 
 
 def compare_excel_vs_supabase(xml_path: str, excel_path: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Compara salida de validación Excel vs Supabase para el mismo XML.
-    Útil para depurar paridad entre ambos orígenes.
-    """
+    """Compara resultado de validación Excel vs Supabase para un mismo XML."""
     out_excel = validate_invoice(xml_path, excel_path=excel_path, use_database=False)
     out_db = validate_invoice(xml_path, excel_path=excel_path, use_database=True)
 

@@ -71,33 +71,18 @@ def run() -> None:
 
     st.title("Validador XML de Facturas")
 
-    db_available = False
     with st.spinner("Validando conexion..."):
         if not backend.test_connection():
-            st.error("No se pudo conectar a Supabase. Usando fallback a Excel.")
-            db_available = False
+            st.error("No se pudo conectar a Supabase.")
+            st.stop()
         else:
             st.success("Conectado a Supabase")
-            db_available = True
-
-    if db_available:
-        source = st.radio(
-            "Fuente de validacion",
-            options=["Supabase", "Excel"],
-            index=1,
-            horizontal=True,
-            help="Excel usa tablas locales configuradas en EXCEL_PATH y Info_CDM_Bot.xlsx.",
-        )
-        use_db = source == "Supabase"
-    else:
-        use_db = False
-        st.info("Modo Excel activo (Supabase no disponible).")
 
     xml_file = st.file_uploader("Sube el XML", type=["xml"])
 
     if st.button("Validar") and xml_file:
         try:
-            out = backend.validate_from_streamlit_upload(xml_file, use_database=use_db)
+            out = backend.validate_from_streamlit_upload(xml_file, use_database=True)
             st.subheader(f"Resultado: {out.summary.get('status', 'KO')}")
             st.caption(f"Errores detectados: {out.summary.get('n_errors', 0)}")
             st.write("### Comparativa XML vs Calculado")
