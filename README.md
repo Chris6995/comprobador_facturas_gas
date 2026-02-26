@@ -53,12 +53,8 @@ Se abrirá en `http://localhost:8501`
 
 ```
 ├── app.py                                # Entrypoint Streamlit (wrapper)
-├── backend.py                            # Wrapper de compatibilidad
+├── backend.py                            # Backend unificado (validación + acceso datos)
 ├── db.py                                 # Wrapper de compatibilidad
-├── src/comprobador/
-│   ├── core/validation.py                # Lógica de validación
-│   ├── infra/supabase_client.py          # Integración con Supabase
-│   └── ui/streamlit_app.py               # Interfaz Streamlit
 ├── scripts/
 │   ├── migrate_excel_to_supabase.py      # Script para migrar datos
 │   └── launcher_streamlit.py             # Entry point para EXE

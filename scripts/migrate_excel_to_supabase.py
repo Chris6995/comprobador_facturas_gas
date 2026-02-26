@@ -4,25 +4,27 @@ Exe: python scripts/migrate_excel_to_supabase.py
 """
 
 import os
-import sys
 from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
-# Asegura imports del paquete src/
 ROOT_DIR = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT_DIR / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+import sys
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 # Cargar variables de entorno
 load_dotenv(ROOT_DIR / ".env")
 
 try:
-    from comprobador.infra import supabase_client as db
+    import backend as db
 except ImportError:
     print("Error: No se pudo importar el modulo de Supabase")
-    sys.exit(1)
+    raise
+
+
+def _client():
+    return db.get_supabase_client()
 
 
 def migrate_peajes_local(excel_path: str) -> bool:
@@ -41,7 +43,7 @@ def migrate_peajes_local(excel_path: str) -> bool:
                 "tv": float(row.get("tv") or 0),
             }
             
-            db.supabase.table("peajes_local").upsert(data).execute()
+            _client().table("peajes_local").upsert(data).execute()
             print(f"✅ Insertado peaje local: {peaje}")
         
         return True
@@ -75,7 +77,7 @@ def migrate_peajes_regas(excel_path: str) -> bool:
                 "tf_regas": tf_regas,
             }
             
-            db.supabase.table("peajes_regas").upsert(data).execute()
+            _client().table("peajes_regas").upsert(data).execute()
             print(f"✅ Insertado peaje regas: {peaje}")
         
         return True
@@ -109,7 +111,7 @@ def migrate_peajes_cargo(excel_path: str) -> bool:
                 "tf_cargo": tf_cargo,
             }
             
-            db.supabase.table("peajes_cargo").upsert(data).execute()
+            _client().table("peajes_cargo").upsert(data).execute()
             print(f"✅ Insertado cargo ministerio: {peaje}")
         
         return True
@@ -138,7 +140,7 @@ def migrate_peajes_transporte(excel_path: str) -> bool:
                 "tf_transporte": tf_transporte,
             }
             
-            db.supabase.table("peajes_transporte").insert(data).execute()
+            _client().table("peajes_transporte").insert(data).execute()
             print(f"✅ Insertado peaje transporte: {tf_transporte}")
         
         return True
@@ -166,7 +168,7 @@ def migrate_peajes_multiplicadores(excel_path: str) -> bool:
             }
 
             try:
-                db.supabase.table("peajes_multiplicadores").upsert(
+                _client().table("peajes_multiplicadores").upsert(
                     data_new,
                     on_conflict="fecha",
                 ).execute()
@@ -176,7 +178,7 @@ def migrate_peajes_multiplicadores(excel_path: str) -> bool:
                     "peaje": data_new["fecha"],
                     "multiplicador": data_new["diario"],
                 }
-                db.supabase.table("peajes_multiplicadores").upsert(
+                _client().table("peajes_multiplicadores").upsert(
                     data_legacy,
                     on_conflict="peaje",
                 ).execute()
@@ -221,7 +223,7 @@ def migrate_conceptos_rules(excel_path: str) -> bool:
                 "requiere_validacion": True,
             }
 
-            db.supabase.table("conceptos_rules").upsert(
+            _client().table("conceptos_rules").upsert(
                 data,
                 on_conflict="cod_concepto",
             ).execute()

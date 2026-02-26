@@ -76,11 +76,10 @@ Si falla:
 
 ## 📦 Archivos Nuevos
 
-### `src/comprobador/infra/supabase_client.py`
+### `backend.py`
 Módulo de conexión y operaciones con Supabase:
 - `get_reference_tables()` - Carga todas las tablas
 - `get_cups_contract()` - Obtiene referencia contractual por CUPS
-- `get_peaje_by_type()` - Obtiene un peaje específico
 - `insert_validation_result()` - Inserta resultados
 - `test_connection()` - Prueba la conexión
 
@@ -97,14 +96,14 @@ SUPABASE_KEY=...
 
 ## 🔄 Cambios en el Backend
 
-### `src/comprobador/core/validation.py`
+### `backend.py`
 - `load_reference_tables()` ahora intenta Supabase primero, luego Excel como fallback
 - `validate_invoice()` tiene parámetro `use_database=True`
 - Compatible con versiones anteriores
 
-### `src/comprobador/ui/streamlit_app.py`
+### `app.py`
 - Verifica conexión a Supabase al iniciar
-- Usa BD automáticamente si está disponible
+- Permite elegir fuente de validación (Supabase/Excel)
 
 ---
 

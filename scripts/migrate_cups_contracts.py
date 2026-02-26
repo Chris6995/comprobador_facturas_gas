@@ -18,9 +18,10 @@ from typing import Any, Dict, List
 import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT_DIR / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+import backend as db
 
 
 def _clean_text(value: Any) -> str | None:
@@ -85,11 +86,10 @@ def normalize_cups_excel(excel_path: Path) -> pd.DataFrame:
 
 
 def migrate_cups_contracts(df: pd.DataFrame) -> int:
-    from comprobador.infra import supabase_client as db
-
     rows: List[Dict[str, Any]] = df.where(pd.notna(df), None).to_dict(orient="records")
 
     inserted = 0
+    client = db.get_supabase_client()
     for row in rows:
         for key, value in list(row.items()):
             if isinstance(value, (date, datetime, pd.Timestamp)):
@@ -101,13 +101,13 @@ def migrate_cups_contracts(df: pd.DataFrame) -> int:
         try:
             cups = row.get("cups")
             update_response = (
-                db.supabase.table("cups_contratos")
+                client.table("cups_contratos")
                 .update(row)
                 .eq("cups", cups)
                 .execute()
             )
             if not update_response.data:
-                db.supabase.table("cups_contratos").insert(row).execute()
+                client.table("cups_contratos").insert(row).execute()
             inserted += 1
         except Exception as exc:
             cups = row.get("cups")
@@ -153,8 +153,6 @@ def main() -> int:
     if args.skip_db:
         print("Modo --skip-db: no se inserta en Supabase.")
         return 0
-
-    from comprobador.infra import supabase_client as db
 
     if not db.test_connection():
         print("No hay conexion operativa con Supabase.")

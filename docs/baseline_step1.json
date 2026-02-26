@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-02-26T09:17:34.083564Z",
+  "mode": "excel",
+  "xml_path": "docs/factura_ref.xml",
+  "excel_path": "data/Consumos-NEDGIA_SEPIOL_tablas.xlsx",
+  "summary": {
+    "tipopeaje": "R8",
+    "cups": "ES0217901000011308XH",
+    "importetotal_xml": 12365.36,
+    "importetotal_calc_conceptos": 12365.36,
+    "importetotal_ok": true,
+    "importetotal_excluded_codes": [
+      "0000",
+      "0007"
+    ],
+    "base_imponible_xml": 254.45,
+    "base_imponible_calc_alquileres": 254.45,
+    "base_imponible_ok": true,
+    "iva_xml": 53.43,
+    "iva_rate_pct": 21.0,
+    "iva_calc": 53.43,
+    "iva_ok": true,
+    "consumo_global_mensual_xml_kwh": 2966708.0,
+    "capacidad_mensual_kwh": 5580000.0,
+    "consumo_indefinido_calc_kwh": 2966708.0,
+    "consumo_indefinido_ok": true,
+    "n_conceptos": 17,
+    "n_coef_cortoplazo_checks": 6,
+    "n_coef_cortoplazo_errors": 0,
+    "n_errors": 0,
+    "status": "OK",
+    "cups_ref_found": true,
+    "cups_tarifa_ref": "R8",
+    "cups_qd_contratada_kwh_ref": 180000.0,
+    "cups_qd_contratada_kwh_xml": 180000.0,
+    "cups_qd_match_xml_vs_ref": true,
+    "cups_tarifa_match_xml_vs_ref": true,
+    "cups_interrumpibilidad_ref": null
+  },
+  "status_counts": {
+    "OK": 14,
+    "SIN_REGLA": 3
+  },
+  "ko_concepts": [],
+  "na_concepts": [
+    "1914",
+    "2013",
+    "2012"
+  ]
+}
